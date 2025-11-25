@@ -80,6 +80,19 @@ java DecryptFile
 
 ---
 
+## Create files with specific sizes for performance testing
+
+```bash
+# Create a 10MB test file
+fsutil file createnew test_10mb 10485760
+# Create a 100MB test file
+fsutil file createnew test_100mb 104857600
+# Create a 1GB test file
+fsutil file createnew test_1gb 1073741824
+```
+
+---
+
 ## Program Usage
 
 ### Lab05_1: DES File Encryption
