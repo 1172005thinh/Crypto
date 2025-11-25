@@ -1,244 +1,367 @@
-# Python Code Analysis Report
+# Java Cryptography Architecture - Lab Implementation
 
-## Executive Summary
+## Overview
 
-This report analyzes the Python cryptography examples (`Lab05_1.py`, `Lab05_2.py`, `Lab05_3.py`) and identifies issues before migration to Java.
+This project implements Java Cryptography Architecture (JCA) with three main programs for educational purposes:
 
----
+- **Lab05_1.java** - DES file encryption/decryption with multiple modes
+- **Lab05_2.java** - RSA file encryption/decryption with key management
+- **Lab05_3.java** - Digital signatures with SHA1withRSA
 
-## Lab05_1.py - DES File Encryption/Decryption
-
-### Overview
-
-Implements DES encryption/decryption with ECB/CBC modes and PKCS5/NoPadding options.
-
-### Issues Identified Lab05_1
-
-#### 1. **Security Concerns**
-
-- **ECB Mode**: ECB mode is cryptographically weak (doesn't hide patterns). Used for educational purposes only.
-- **DES Algorithm**: DES has 56-bit effective key size - broken by modern standards. Should use AES-256 in production.
-- **Hardcoded Key**: Test key `"abcdEFGH"` hardcoded in test functions.
-
-#### 2. **Code Quality**
-
-- **Memory Efficiency**: Loads entire file into memory (`plaintext = f.read()`). Problem for large files (1GB test).
-- **Error Handling**: Uses generic `except Exception` - too broad.
-- **Vietnamese Comments**: May cause encoding issues.
-
-#### 3. **Compatibility**
-
-- Uses `pycryptodome` library (`Crypto.Cipher.DES`) - needs Java equivalent using `javax.crypto.Cipher`.
-- Python's `pad/unpad` functions need Java equivalents or manual implementation.
-
-### Recommendations Lab05_1
-
-✅ Use streaming I/O in Java for large files  
-✅ Implement try-with-resources for automatic resource management  
-✅ Use specific exception types (`NoSuchAlgorithmException`, `InvalidKeyException`)  
-✅ Add warnings about ECB mode insecurity  
+**WARNING**: These implementations use DES and SHA-1 for educational purposes only. These algorithms are deprecated and should not be used in production systems.
 
 ---
 
-## Lab05_2.py - RSA File Encryption/Decryption
+## Quick Start
 
-### Overview Lab05_2
+### Prerequisites
 
-Implements RSA file encryption with key generation, saving/loading, and block-based processing.
+- JDK 1.6 or higher (tested with JDK 24)
+- Windows, Linux, or Mac OS
+- No external dependencies required (uses built-in JCA)
 
-### Issues Identified Lab05_2
+### Installation
 
-#### 1. **Design Issues**
+1. Navigate to the code directory:
 
-- **Block Size Header**: Uses 2-byte header limiting blocks to 65KB.
-- **Max Block Calculation**: `key_size_bytes - 2*20 - 2` specific to OAEP with SHA-1.
-- **Performance**: RSA is extremely slow for large files (intentionally demonstrated).
+   ```bash
+   cd code
+   ```
 
-#### 2. **Security**
+2. Compile all programs:
 
-- **Key Storage**: DER format used - compatible with Java.
-- **OAEP Padding**: `PKCS1_OAEP` provides good security but SHA-1 is deprecated (use SHA-256).
-
-#### 3. **Implementation Lab05_2**
-
-- **Progress Spam**: Prints every 100 blocks - can spam console.
-- **Resource Management**: Files may not close properly on exceptions.
-- **Block Size Limit**: 2-byte header limits flexibility.
-
-### Recommendations Lab05_2
-
-✅ Use `Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding")` in Java  
-✅ Implement 4-byte block size headers for larger files  
-✅ Use `KeyFactory` with `X509EncodedKeySpec`/`PKCS8EncodedKeySpec`  
-✅ Add try-with-resources for file operations  
+   ```bash
+   javac Lab05_1.java Lab05_2.java Lab05_3.java
+   ```
 
 ---
 
-## Lab05_3.py - Digital Signatures with Sign-and-Encrypt
+## Running Tests
 
-### Overview Lab05_3
+### Automated Tests
 
-Implements digital signatures using SHA1withRSA, plus sign-then-encrypt scheme with DES.
+Run all tests automatically:
 
-### Issues Identified Lab05_3
+**Windows:**
 
-#### 1. **Critical Security Issues**
-
-- **SHA-1 Deprecated**: SHA-1 is cryptographically broken (collision attacks exist).
-  - **Severity**: HIGH
-  - **Note**: Assignment requires SHA1withRSA, but should include security warnings.
-- **Weak DES**: 56-bit DES key provides inadequate security.
-- **No Key Exchange**: Assumes DES key "already shared" with no mechanism provided.
-
-#### 2. **Design Issues**
-
-- **JSON Overhead**: Uses JSON+Base64 inside encrypted binary - inefficient.
-  - Better: Simple binary format `[4 bytes: data_len][4 bytes: sig_len][data][signature]`
-- **No Authenticated Encryption**: CBC without MAC vulnerable to attacks.
-- **No Timestamp**: Signatures lack timestamps - replay attack vulnerability.
-
-#### 3. **Implementation Lab05_3**
-
-- **PEM Format**: Uses PEM for RSA keys (different from Lab05_2's DER).
-- **Mixed Responsibilities**: Class handles both RSA and DES - consider separation.
-- **Error Messages**: Vietnamese error messages cause localization issues.
-
-### Recommendations Lab05_3
-
-✅ Keep SHA-1 for assignment but add clear deprecation warnings  
-✅ Use `Signature.getInstance("SHA1withRSA")` in Java  
-✅ Replace JSON with binary format for efficiency  
-✅ Document security limitations clearly  
-✅ Consider upgrading to SHA-256 in comments as production recommendation  
-
----
-
-## Cross-Cutting Issues
-
-### 1. **Dependency Management**
-
-- **Python**: Requires `pycryptodome` package
-- **Java**: Uses built-in JCA (no external dependencies) ✅
-
-### 2. **Character Encoding**
-
-- **Python**: Uses UTF-8 implicitly
-- **Java**: Must explicitly specify `StandardCharsets.UTF_8` ✅
-
-### 3. **Error Handling**
-
-- **Python**: Generic `Exception` catching
-- **Java**: Use specific exception types (`NoSuchAlgorithmException`, `InvalidKeyException`, `BadPaddingException`)
-
-### 4. **Resource Management**
-
-- **Python**: Context managers (`with` statement)
-- **Java**: Try-with-resources for auto-close ✅
-
-### 5. **Testing**
-
-- **Python**: No unit tests provided
-- **Java**: Should add JUnit tests
-
----
-
-## Summary of Critical Fixes Needed
-
-| Issue | Severity | Action Required |
-|-------|----------|-----------------|
-| SHA-1 usage | HIGH | Add deprecation warnings, document for educational use only |
-| Memory inefficiency (large files) | HIGH | Implement streaming I/O in Java |
-| Generic exception handling | MEDIUM | Use specific exception types |
-| Resource management | MEDIUM | Use try-with-resources |
-| ECB mode warning | LOW | Add educational security warning |
-| DES weakness | LOW | Document as educational only |
-
----
-
-## Migration Strategy
-
-### Phase 1: Lab05_1 (DES) ✅
-
-- Implement all 4 modes: ECB/CBC with PKCS5Padding/NoPadding
-- Add interactive menu for mode selection
-- Implement performance testing
-- **Status**: Ready to implement
-
-### Phase 2: Lab05_2 (RSA)
-
-- Implement key generation and storage
-- Implement block-based file encryption
-- Add key loading from files
-- Compare performance with DES
-- **Status**: Ready to implement
-
-### Phase 3: Lab05_3 (Signatures)
-
-- Implement SHA1withRSA signing/verification
-- Implement sign-and-encrypt scheme
-- Implement decrypt-and-verify scheme
-- **Status**: Ready to implement
-
----
-
-## Recommendations for Java Implementation
-
-### Code Structure
-
-```java
-// Use proper exception handling
-try (FileInputStream fis = new FileInputStream(file);
-     FileOutputStream fos = new FileOutputStream(outFile)) {
-    // Process file
-} catch (NoSuchAlgorithmException e) {
-    // Handle specific exception
-}
+```bash
+run_tests.bat
 ```
 
-### Character Encoding
+**PowerShell/Linux:**
 
-```java
-// Always specify encoding explicitly
-key = keyString.getBytes(StandardCharsets.UTF_8);
+```bash
+# Test HMAC
+java testMAC
+
+# Test RSA
+echo "Hello RSA" | java testRSA
+
+# Test Digital Signatures (auto demo)
+echo "6" | java Lab05_3
 ```
 
-### Time Measurement
+### Manual Tests
 
-```java
-// Use nano precision for accurate timing
-long startTime = System.nanoTime();
-// ... operation ...
-double elapsed = (System.nanoTime() - startTime) / 1_000_000_000.0;
-```
+Run individual test programs:
 
-### Security Warnings
+```bash
+# Test 1: HMAC Message Authentication
+java testMAC
 
-```java
-/**
- * WARNING: This implementation uses DES and ECB mode for EDUCATIONAL PURPOSES ONLY.
- * 
- * Security issues:
- * - DES has 56-bit key size (broken by modern standards)
- * - ECB mode does not hide data patterns (cryptographically weak)
- * - SHA-1 is deprecated due to collision attacks
- * 
- * For production use:
- * - Use AES-256 instead of DES
- * - Use CBC or GCM mode instead of ECB
- * - Use SHA-256 or SHA-512 instead of SHA-1
- */
+# Test 2: RSA String Encryption
+java testRSA
+# (Enter a message when prompted)
+
+# Test 3: DES File Encryption (legacy)
+java EncryptFile test.txt
+java DecryptFile
 ```
 
 ---
 
-## Conclusion
+## Program Usage
 
-The Python code is functional and demonstrates cryptographic concepts correctly, but has several issues:
+### Lab05_1: DES File Encryption
 
-1. **Security**: Uses deprecated algorithms (required by assignment for educational purposes)
-2. **Performance**: Inefficient memory usage for large files
-3. **Code Quality**: Needs better error handling and resource management
+**Description**: Encrypts/decrypts files using DES with 4 different modes.
 
-The Java migration will address these issues while maintaining compatibility with the assignment requirements.
+**Run:**
 
-**Status**: Ready to proceed with Java implementation.
+```bash
+java Lab05_1
+```
+
+**Interactive Menu:**
+
+1. Choose action: Encrypt (1) or Decrypt (2)
+2. Enter input file name
+3. Enter key (8 characters) or key file path
+4. Select encryption mode:
+   - Mode 1: DES/ECB/PKCS5Padding
+   - Mode 2: DES/ECB/NoPadding
+   - Mode 3: DES/CBC/PKCS5Padding
+   - Mode 4: DES/CBC/NoPadding
+
+**Example:**
+
+```plaintext
+Choose action (1-Encrypt, 2-Decrypt): 1
+Enter input file name: test.txt
+Enter key (8 characters): mykey123
+Choose mode (1-4): 3
+```
+
+**Output:** Creates `output.enc` (encrypted) or `output.dec` (decrypted)
+
+---
+
+### Lab05_2: RSA File Encryption
+
+**Description**: Encrypts/decrypts files using RSA with key generation and management.
+
+**Run:**
+
+```bash
+java Lab05_2
+```
+
+**Menu Options:**
+
+1. **Generate new key pair**
+   - Creates RSA keys (default 2048-bit)
+   - Saves as `[name].key` (private) and `[name].pub` (public)
+
+2. **Encrypt file**
+   - Requires public key file
+   - Processes file in blocks
+   - Creates encrypted output file
+
+3. **Decrypt file**
+   - Requires private key file
+   - Decrypts block-by-block
+   - Restores original file
+
+4. **Performance test**
+   - Compares RSA vs DES speed
+   - Uses 10MB test file
+   - Shows timing statistics
+
+**Example Session:**
+
+```plaintext
+Choice (1-4): 1
+Enter key size (default 2048): [Enter]
+Enter base name for key files: mykey
+
+Choice (1-4): 2
+Enter public key file name: mykey.pub
+Enter file to encrypt: test.txt
+Enter output file name: [Enter]
+```
+
+---
+
+### Lab05_3: Digital Signatures
+
+**Description**: Implements digital signatures with sign/verify and sign-and-encrypt operations.
+
+**Run:**
+
+```bash
+java Lab05_3
+```
+
+**Menu Options:**
+
+1. **Generate RSA key pair** - Create signing keys
+2. **Sign message** - Create digital signature
+3. **Verify signature** - Verify message authenticity
+4. **Sign and encrypt** - Sign then encrypt with DES
+5. **Decrypt and verify** - Decrypt then verify signature
+6. **Demo basic sign/verify** - Automatic demonstration
+7. **Demo sign-and-encrypt** - Complete workflow demo
+
+**Quick Demo:**
+
+```bash
+# Run automatic demonstration
+echo "6" | java Lab05_3
+```
+
+**Manual Example:**
+
+```plaintext
+Choice (1-7): 1
+Enter key size (default 2048): [Enter]
+Enter base name for key files: sig_key
+
+Choice (1-7): 2
+Enter private key file: sig_key.key
+Enter message to sign: Hello World
+Enter file to save signature: sig.bin
+```
+
+---
+
+## Quick Demos
+
+### Demo 1: DES Encryption/Decryption
+
+```bash
+# Create test file
+echo "This is a test message" > test_message.txt
+
+# Run Lab05_1 and follow prompts:
+# 1 (encrypt) -> test_message.txt -> [Enter] -> mykey123 -> 3
+java Lab05_1
+
+# Decrypt the file:
+# 2 (decrypt) -> output.enc -> [Enter] -> mykey123 -> 3
+java Lab05_1
+
+# Verify files match
+cat test_message.txt
+cat output.dec
+```
+
+### Demo 2: RSA Key Generation and File Encryption
+
+```bash
+java Lab05_2
+# 1 -> [Enter] -> mykey -> [Enter]
+# 2 -> mykey.pub -> test_message.txt -> [Enter]
+# 3 -> mykey.key -> output.enc -> [Enter]
+```
+
+### Demo 3: Digital Signature Workflow
+
+```bash
+# Automatic demo (no input required)
+echo "6" | java Lab05_3
+
+# Or run full workflow demo
+echo "7" | java Lab05_3
+```
+
+---
+
+## File Descriptions
+
+### Lab Programs
+
+- `Lab05_1.java` - DES file encryption with 4 modes
+- `Lab05_2.java` - RSA file encryption with key management
+- `Lab05_3.java` - Digital signatures with SHA1withRSA
+
+### Test Programs
+
+- `testMAC.java` - HMAC-MD5 message authentication test
+- `testRSA.java` - RSA string encryption test
+- `EncryptFile.java` - Legacy DES encryption example
+- `DecryptFile.java` - Legacy DES decryption example
+
+### Helper Files
+
+- `run_tests.bat` - Automated test runner (Windows)
+- `HOW_TO_RUN_TESTS.md` - Detailed testing guide
+- `REPORT.md` - Python code analysis report
+
+---
+
+## Performance Notes
+
+### DES Performance
+
+- Fast for large files (100+ MB/s)
+- All 4 modes have similar speed
+- CBC slightly slower than ECB due to IV
+
+### RSA Performance
+
+- Very slow for large files (< 1 MB/s)
+- Block-based processing required
+- ~100x slower than DES
+- Use hybrid encryption for large files in production
+
+### Timing Measurements
+
+All programs use nanosecond precision timing (`System.nanoTime()`) for accurate performance measurements.
+
+---
+
+## Security Warnings
+
+### Educational Use Only
+
+This implementation uses deprecated algorithms:
+
+- **DES**: 56-bit key (broken by modern standards)
+- **ECB Mode**: Does not hide data patterns
+- **SHA-1**: Vulnerable to collision attacks
+
+### Production Recommendations
+
+- Use **AES-256** instead of DES
+- Use **CBC** or **GCM** mode instead of ECB
+- Use **SHA-256** or **SHA-512** instead of SHA-1
+- Implement proper key exchange mechanisms
+- Add message authentication codes (MAC)
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### Error: "Could not find or load main class"
+
+```bash
+# Ensure you're in the code directory
+cd code
+# Recompile
+javac Lab05_1.java Lab05_2.java Lab05_3.java
+```
+
+#### Error: "File does not exist"
+
+```bash
+# Create test file
+echo "Test content" > test_message.txt
+```
+
+#### Error: "Invalid key length"
+
+```bash
+# DES key must be exactly 8 characters
+# Example: "mykey123" or "abcdEFGH"
+```
+
+#### Error: "With NoPadding, data length must be multiple of 8 bytes"
+
+```bash
+# Use PKCS5Padding mode instead
+# Or ensure file size is multiple of 8 bytes
+```
+
+---
+
+## Additional Resources
+
+- **Detailed Testing Guide**: See `HOW_TO_RUN_TESTS.md` in the code directory
+- **Python Analysis**: See `REPORT.md` for original Python code issues
+- **Java Cryptography**: [Oracle JCA Documentation](http://download.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html)
+
+---
+
+## Assignment Submission
+
+Required files:
+
+- `Lab05_1.java`
+- `Lab05_2.java`
+- `Lab05_3.java`
+
+Package as: `<StudentID>_lab05.zip`
+
+Submission deadline: As announced on Bkel platform
